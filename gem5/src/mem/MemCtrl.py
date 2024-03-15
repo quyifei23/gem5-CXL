@@ -62,7 +62,7 @@ class MemCtrl(QoSMemCtrl):
     # single-ported on the system interface side, instantiate with a
     # bus in front of the controller for multiple ports
     port = ResponsePort("This port responds to memory requests")
-    
+
     # Interface to memory media
     dram = Param.MemInterface(
         "Memory interface, can be a DRAMor an NVM interface "

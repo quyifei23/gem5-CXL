@@ -58,7 +58,7 @@ thispath = os.path.dirname(os.path.realpath(__file__))
 default_binary = os.path.join(
     thispath,
     "../../../",
-    "tests/test-progs/threads/bin/x86/linux/threads",
+    "tests/test-progs/hello/bin/x86/linux/hello",
 )
 
 # Binary to execute
@@ -66,6 +66,7 @@ SimpleOpts.add_option("binary", nargs="?", default=default_binary)
 
 # Finalize the arguments and grab the args so we can pass it on to our objects
 args = SimpleOpts.parse_args()
+
 # create the system we are going to simulate
 system = System()
 
@@ -120,9 +121,6 @@ system.mem_ctrl = MemCtrl()
 system.mem_ctrl.dram = DDR3_1600_8x8()
 system.mem_ctrl.dram.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.membus.mem_side_ports
-
-
-
 
 system.workload = SEWorkload.init_compatible(args.binary)
 
