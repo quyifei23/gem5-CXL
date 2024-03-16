@@ -32,7 +32,7 @@ namespace gem5
     void CXLSwitch::CPUSidePort::recvFunctional(PacketPtr pkt) {
         return owner->handleFunctional(pkt);
     }
-    
+                                                                                                                                                                          
     void CXLSwitch::handleFunctional(PacketPtr pkt) {
         memPort.sendFunctional(pkt);
         switchPort.sendFunctional(pkt);
@@ -40,7 +40,9 @@ namespace gem5
 
     AddrRangeList CXLSwitch::getAddrRanges() const {
         DPRINTF(CXLSwitch,"Sending new ranges\n");
-        return memPort.getAddrRanges(); //this need change
+        AddrRangeList listMem=memPort.getAddrRanges();
+        listMem.merge(switchPort.getAddrRanges());
+        return listMem; //merge two list 
     }
 
     void CXLSwitch::MemSidePort::recvRangeChange() {
