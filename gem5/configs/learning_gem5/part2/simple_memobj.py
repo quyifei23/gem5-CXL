@@ -46,7 +46,7 @@ system.clk_domain.voltage_domain = VoltageDomain()
 
 # Set up the system
 system.mem_mode = "timing"  # Use timing accesses
-system.mem_ranges = [AddrRange("512MB")]  # Create an address range
+system.mem_ranges = [AddrRange("512MB"),AddrRange("512MB","1024MB")]  # Create an address range
 
 # Create a simple CPU
 system.cpu = X86TimingSimpleCPU()
@@ -80,6 +80,11 @@ system.mem_ctrl = MemCtrl()
 system.mem_ctrl.dram = DDR3_1600_8x8()
 system.mem_ctrl.dram.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.cxlswitch.mem_side_port
+
+system.mem_ctrl2 = MemCtrl()
+system.mem_ctrl2.dram = DDR3_1600_8x8()
+system.mem_ctrl2.dram.range = system.mem_ranges[1]
+system.mem_ctrl2.port = system.cxlswitch.switch_side_port
 
 
 # Connect the system up to the membus

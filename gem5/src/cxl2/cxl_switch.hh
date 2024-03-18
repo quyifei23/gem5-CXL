@@ -38,7 +38,6 @@ namespace gem5
                 void sendPacket(PacketPtr pkt);
                 AddrRangeList getAddrRanges() const override;
                 void trySendRetry();
-
             protected:
                 Tick recvAtomic(PacketPtr pkt) override { panic("recvAtomic unimpl."); }
                 void recvFunctional(PacketPtr pkt) override;
@@ -71,6 +70,7 @@ namespace gem5
         void sendRangeChange();
 
         CPUSidePort cpuPort;
+
         MemSidePort memPort;
         MemSidePort switchPort;
 

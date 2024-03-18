@@ -34,15 +34,24 @@ namespace gem5
     }
                                                                                                                                                                           
     void CXLSwitch::handleFunctional(PacketPtr pkt) {
-        memPort.sendFunctional(pkt);
+        DPRINTF(CXLSwitch,"Handling new functional,need to choose which port to send\n");
+        AddrRangeList list_= memPort.getAddrRanges();
+        for(auto &addrrange : list_) {
+            if(addrrange.contains(pkt->getAddr())) {
+                memPort.sendFunctional(pkt);
+                DPRINTF(CXLSwitch,"sending to memPort\n");
+                return ;
+            }
+        }
         switchPort.sendFunctional(pkt);
+        DPRINTF(CXLSwitch,"sending to switchPort\n");
     }
 
     AddrRangeList CXLSwitch::getAddrRanges() const {
-        DPRINTF(CXLSwitch,"Sending new ranges\n");
-        AddrRangeList listMem=memPort.getAddrRanges();
-        listMem.merge(switchPort.getAddrRanges());
-        return listMem; //merge two list 
+        DPRINTF(CXLSwitch,"merge mem ranges and switch ranges\n");
+        AddrRangeList list_= memPort.getAddrRanges();
+        list_.merge(switchPort.getAddrRanges()); //merge two list 
+        return list_;
     }
 
     void CXLSwitch::MemSidePort::recvRangeChange() {
@@ -68,8 +77,16 @@ namespace gem5
         }
         DPRINTF(CXLSwitch, "Got request for addr %#x\n", pkt->getAddr());
         blocked = true;
-        memPort.sendPacket(pkt);
+        AddrRangeList list_= memPort.getAddrRanges();
+        for(auto &addrrange : list_) {
+            if(addrrange.contains(pkt->getAddr())) {
+                memPort.sendPacket(pkt);
+                DPRINTF(CXLSwitch,"sending to memPort\n");
+                return true;
+            }
+        }
         switchPort.sendPacket(pkt);
+        DPRINTF(CXLSwitch,"sending to switchPort\n");
         return true;
     }
 
