@@ -47,7 +47,7 @@ from m5.objects import *
 m5.util.addToPath("../../")
 
 # import the caches which we made
-from caches import *
+from gem5.configs.learning_gem5.part1.caches import *
 
 # import the SimpleOpts module
 from common import SimpleOpts
