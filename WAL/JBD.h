@@ -178,3 +178,45 @@ struct journal_header_s
     int h_blocktype;
     int h_sequence;
 };
+
+//JBD2的操作接口
+
+journal_t *journal_init();//初始化日志系统
+
+int journal_load(journal_t *journal);//读取并恢复已有日志（如果存在）
+
+int journal_destroy(journal_t *journal);//销毁内存中日志系统的信息
+
+//JBD2的事务和原子操作接口
+
+handle_t journal_start(journal_t *journal,int nblocks);//在当前事务中开始一个新的原子操作
+
+handle_t * new_handle(int nblocks) {
+    handle_t *handle = new handle_t();
+    handle->h_buffer_credits = nblocks;
+    handle->h_sync = 0;
+    return handle;
+}
+
+void delete_handle(handle_t *handle) {
+    delete handle;
+}
+
+handle_t journal_start(journal_t *journal,int nblocks) {
+    handle_t *handle = new_handle(nblocks);
+    
+}
+
+int journal_get_write_access(handle_t *handle, buffer_head *bh);//通知JBD2即将修改缓冲区bh中的元数据
+
+int journal_get_create_access(handle_t *handle, buffer_head *bh);//通知JBD2即将使用一个新的缓冲区
+
+int journal_dirty_metadata(handle_t *handle, buffer_head *bh);//通知JBD2该缓冲区包含脏元数据
+
+int journal_stop(handle_t *handle);//结束一个原子操作
+
+int journal_force_commit(journal_t *journal);//强制提交当前事务
+
+
+
+
