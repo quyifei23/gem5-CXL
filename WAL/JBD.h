@@ -1,4 +1,5 @@
 #include <iostream>
+#include <list>
 
 struct transaction_s;
 typedef transaction_s transaction_t;
@@ -22,7 +23,7 @@ struct handle_s
 };
 typedef handle_s handle_t;
 
-struct transation_s
+struct transaction_s
 {
     journal_t *t_journal; // 本事务属于哪个journal
     unsigned int t_tid;   // 本事务的数据号
@@ -59,6 +60,9 @@ struct transation_s
     int t_outstanding_credits;          // 本事务预留的额度
     transaction_t *t_cpnext, *t_cpprev; // 可用于checkpoint队列上组成链表
     int i_handle_count;                 // 本事务包括多少handle_t
+
+    //add
+    std::list<handle_t *> handles;
 };
 
 struct journal_s
@@ -71,7 +75,7 @@ struct journal_s
     int j_barrier_count;                      // 有多少进程正在等待创建一个barrier_lock，这个变量由j_state_lock保护
     struct mutex *j_barrier;                  // 互斥锁
     transaction_t *j_running_transaction;     // 指向正在运行的事务
-    transaction_t *j_committing_transaction;  // 指向正在提交的事务
+    transaction_t *j_committing_transaction;  // 指向正在提交的事务 
     transaction_t *j_checkpoing_transactions; // 仍在等待checkpoint操作的所有事务组成的循环队列
     // 一旦一个事务执行checkpoint完成，则从此队列中删除
     waitqueue_t *j_wait_transaction_locked; // 等待一个已经上锁的事务开始提交
@@ -176,21 +180,10 @@ struct journal_header_s
 {
     int h_magic;
     int h_blocktype;
-    int h_sequence;
+    int h_sequence; 
 };
 
-//JBD2的操作接口
-
-journal_t *journal_init();//初始化日志系统
-
-int journal_load(journal_t *journal);//读取并恢复已有日志（如果存在）
-
-int journal_destroy(journal_t *journal);//销毁内存中日志系统的信息
-
-//JBD2的事务和原子操作接口
-
-handle_t journal_start(journal_t *journal,int nblocks);//在当前事务中开始一个新的原子操作
-
+//原子操作和事务的创建和删除
 handle_t * new_handle(int nblocks) {
     handle_t *handle = new handle_t();
     handle->h_buffer_credits = nblocks;
@@ -202,10 +195,40 @@ void delete_handle(handle_t *handle) {
     delete handle;
 }
 
-handle_t journal_start(journal_t *journal,int nblocks) {
-    handle_t *handle = new_handle(nblocks);
-    
+transaction_t *new_transaction() {
+    transaction_t *transaction = new transaction_t();
+    return transaction;
 }
+void delete_transaction(transaction_t *transaction) {
+    delete transaction;
+}
+
+//JBD2的操作接口
+
+journal_t *journal_init();//初始化日志系统
+
+journal_t *journal_init() {
+    journal_t * journal = new journal_t();
+    transaction_t *transaction = new_transaction();
+    transaction->t_journal = journal;
+    return journal;
+}
+
+int journal_load(journal_t *journal);//读取并恢复已有日志（如果存在）
+
+int journal_destroy(journal_t *journal);//销毁内存中日志系统的信息
+
+//JBD2的事务和原子操作接口
+
+handle_t *journal_start(journal_t *journal,int nblocks);//在当前事务中开始一个新的原子操作
+
+
+handle_t *journal_start(journal_t *journal,int nblocks) {
+    handle_t *handle = new_handle(nblocks);
+    journal->j_running_transaction->handles.push_back(handle);
+    return handle;
+}
+
 
 int journal_get_write_access(handle_t *handle, buffer_head *bh);//通知JBD2即将修改缓冲区bh中的元数据
 
@@ -215,6 +238,9 @@ int journal_dirty_metadata(handle_t *handle, buffer_head *bh);//通知JBD2该缓
 
 int journal_stop(handle_t *handle);//结束一个原子操作
 
+int journal_stop(handle_t *handle) {
+
+}
 int journal_force_commit(journal_t *journal);//强制提交当前事务
 
 
