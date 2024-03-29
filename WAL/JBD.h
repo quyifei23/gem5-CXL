@@ -1,5 +1,8 @@
 #include <iostream>
 #include <list>
+#include <map>
+typedef int* Addr;
+typedef unsigned int Data; // need change
 
 struct transaction_s;
 typedef transaction_s transaction_t;
@@ -18,26 +21,26 @@ typedef journal_header_s journal_header_t;
 struct handle_s
 {
     transaction_t *h_transaction; // 本原子操作属于哪个transaction
-    int h_buffer_credits;         // 本原子操作包含几个磁盘块数
+    // int h_buffer_credits;         // 本原子操作包含几个磁盘块数
     unsigned int h_sync;          // 处理完该原子操作以后，立即将所属的transaction提交
 };
 typedef handle_s handle_t;
 
+enum state {
+    T_RUNNING,
+    T_LOCKED,
+    T_FLUSH,
+    T_COMMIT,
+    T_COMMIT_RECORD,
+    T_FINISHED
+};
 struct transaction_s
 {
     journal_t *t_journal; // 本事务属于哪个journal
     unsigned int t_tid;   // 本事务的数据号
 
     // 事务的状态：
-    enum
-    {
-        T_RUNNING,
-        T_LOCKED,
-        T_FLUSH,
-        T_COMMIT,
-        T_COMMIT_RECORD,
-        T_FINISHED
-    } t_state;
+    enum state t_state;
 
     unsigned int t_log_start;                  // 本事务从哪个日志块开始
     int t_n_buffer;                            // 本事务操作包含几个磁盘块数
@@ -63,6 +66,8 @@ struct transaction_s
 
     //add
     std::list<handle_t *> handles;
+    std::list<Addr> addresses;
+    std::list<Data> datas;
 };
 
 struct journal_s
@@ -128,65 +133,68 @@ struct journal_s
     pid_t j_last_sync_writer;
     void *j_private;
     // 指向ext3的superblock
+
+    //add
+    std::map<Addr,Data> log;
+
 };
 
 // 日志超级块在内存中的表现
-struct journal_superblock_s
-{
-    journal_header_t *s_header; // 用于表示本块是一个超级块
-    int s_blocksize;            // journal所以在设备的块大小
-    int s_maxlen;               // 日志的长度，包括多少个块
-    int s_first;                // 日志的开始块号，日志相当于一个文件，这里提到的开始块号是文件中的逻辑块号
-    int s_sequence;             // 日志中第一个期待的commit ID ，指的是日志中最旧的一个事务的ID
-    int s_start;                // 日志开始的块号，表示本次有效日志块的起点
-};
+// struct journal_superblock_s
+// {
+//     journal_header_t *s_header; // 用于表示本块是一个超级块
+//     int s_blocksize;            // journal所以在设备的块大小
+//     int s_maxlen;               // 日志的长度，包括多少个块
+//     int s_first;                // 日志的开始块号，日志相当于一个文件，这里提到的开始块号是文件中的逻辑块号
+//     int s_sequence;             // 日志中第一个期待的commit ID ，指的是日志中最旧的一个事务的ID
+//     int s_start;                // 日志开始的块号，表示本次有效日志块的起点
+// };
 
 // 一个buffer_head对应一个磁盘块，而一个journal_head对应一个buffer_head。日志通过journal_head对缓冲区进行管理。
-struct journal_head
-{
-    struct buffer_head *b_bh;
-    int b_jcount;
-    unsigned b_jlist;
-    // 本journal_head在transaction_t的哪个链表上
-    unsigned b_modified;
-    // 标志该缓冲区是否以被当前正在运行的transaction修改过
-    char *b_frozen_data;
-    // 当jbd遇到需要转义的块时，
-    // 将buffer_head指向的缓冲区数据拷贝出来，冻结起来，供写入日志使用。
-    char *b_committed_data;
-    // 目的是防止重新写未提交的删除操作
-    // 含有未提交的删除信息的元数据块（磁盘块位图）的一份拷贝，
-    // 因此随后的分配操作可以避免覆盖未提交的删除信息。
-    // 也就是说随后的分配操作使用的时b_committed_data中的数据，
-    // 因此不会影响到写入日志中的数据。
-    transaction_t *b_transaction;
-    // 指向所属的transaction
-    transaction_t *b_next_transaction;
-    // 当有一个transaction正在提交本缓冲区，
-    // 但是另一个transaction要修改本元数据缓冲区的数据，
-    // 该指针就指向第二个缓冲区。
+// struct journal_head
+// {
+//     struct buffer_head *b_bh;
+//     int b_jcount;
+//     unsigned b_jlist;
+//     // 本journal_head在transaction_t的哪个链表上
+//     unsigned b_modified;
+//     // 标志该缓冲区是否以被当前正在运行的transaction修改过
+//     char *b_frozen_data;
+//     // 当jbd遇到需要转义的块时，
+//     // 将buffer_head指向的缓冲区数据拷贝出来，冻结起来，供写入日志使用。
+//     char *b_committed_data;
+//     // 目的是防止重新写未提交的删除操作
+//     // 含有未提交的删除信息的元数据块（磁盘块位图）的一份拷贝，
+//     // 因此随后的分配操作可以避免覆盖未提交的删除信息。
+//     // 也就是说随后的分配操作使用的时b_committed_data中的数据，
+//     // 因此不会影响到写入日志中的数据。
+//     transaction_t *b_transaction;
+//     // 指向所属的transaction
+//     transaction_t *b_next_transaction;
+//     // 当有一个transaction正在提交本缓冲区，
+//     // 但是另一个transaction要修改本元数据缓冲区的数据，
+//     // 该指针就指向第二个缓冲区。
 
-    struct journal_head *b_tnext, *b_tprev;
+//     struct journal_head *b_tnext, *b_tprev;
 
-    transaction_t *b_cp_transaction;
-    // 指向checkpoint本缓冲区的transaction。
-    // 只有脏的缓冲区可以被checkpointed。
+//     transaction_t *b_cp_transaction;
+//     // 指向checkpoint本缓冲区的transaction。
+//     // 只有脏的缓冲区可以被checkpointed。
 
-    struct journal_head *b_cpnext, *b_cpprev;
-    // 在旧的transaction_t被checkpointed之前必须被刷新的缓冲区双向链表。
-};
+//     struct journal_head *b_cpnext, *b_cpprev;
+//     // 在旧的transaction_t被checkpointed之前必须被刷新的缓冲区双向链表。
+// };
 
-struct journal_header_s
-{
-    int h_magic;
-    int h_blocktype;
-    int h_sequence; 
-};
+// struct journal_header_s
+// {
+//     int h_magic;
+//     int h_blocktype;
+//     int h_sequence; 
+// };
 
 //原子操作和事务的创建和删除
-handle_t * new_handle(int nblocks) {
+handle_t * new_handle() {
     handle_t *handle = new handle_t();
-    handle->h_buffer_credits = nblocks;
     handle->h_sync = 0;
     return handle;
 }
@@ -210,38 +218,79 @@ journal_t *journal_init();//初始化日志系统
 journal_t *journal_init() {
     journal_t * journal = new journal_t();
     transaction_t *transaction = new_transaction();
+    transaction->t_state = T_RUNNING;
     transaction->t_journal = journal;
+    journal->j_running_transaction = transaction;
     return journal;
 }
 
-int journal_load(journal_t *journal);//读取并恢复已有日志（如果存在）
+// int journal_load(journal_t *journal);//读取并恢复已有日志（如果存在）
 
-int journal_destroy(journal_t *journal);//销毁内存中日志系统的信息
+// int journal_destroy(journal_t *journal);//销毁内存中日志系统的信息
+void journal_destroy(journal_t *journal) {
+    delete journal;
+}
 
 //JBD2的事务和原子操作接口
 
-handle_t *journal_start(journal_t *journal,int nblocks);//在当前事务中开始一个新的原子操作
+handle_t *journal_start(journal_t *journal);//在当前事务中开始一个新的原子操作
 
 
-handle_t *journal_start(journal_t *journal,int nblocks) {
-    handle_t *handle = new_handle(nblocks);
+handle_t *journal_start(journal_t *journal) {
+    handle_t *handle = new_handle();
+    if(!journal->j_running_transaction) {
+        transaction_t *transaction = new_transaction();
+        transaction->t_state = T_RUNNING;
+        transaction->t_journal = journal;
+        journal->j_running_transaction = transaction;
+    }
+    while(journal->j_running_transaction->t_state!=T_RUNNING) {
+        _sleep(5);
+    }
+    handle->h_transaction = journal->j_running_transaction;
     journal->j_running_transaction->handles.push_back(handle);
     return handle;
 }
 
 
-int journal_get_write_access(handle_t *handle, buffer_head *bh);//通知JBD2即将修改缓冲区bh中的元数据
-
-int journal_get_create_access(handle_t *handle, buffer_head *bh);//通知JBD2即将使用一个新的缓冲区
-
-int journal_dirty_metadata(handle_t *handle, buffer_head *bh);//通知JBD2该缓冲区包含脏元数据
-
-int journal_stop(handle_t *handle);//结束一个原子操作
-
-int journal_stop(handle_t *handle) {
-
+// int journal_get_write_access(handle_t *handle, buffer_head *bh);//通知JBD2即将修改缓冲区bh中的元数据
+//在这里我们修改为：通知JBD2即将修改地址为addr中的数据；
+void journal_get_write_access(handle_t *handle, Addr addr, Data data) {
+    handle->h_transaction->addresses.push_back(addr);
+    handle->h_transaction->datas.push_back(data);
 }
-int journal_force_commit(journal_t *journal);//强制提交当前事务
+
+// int journal_get_create_access(handle_t *handle, buffer_head *bh);//通知JBD2即将使用一个新的缓冲区
+
+// int journal_dirty_metadata(handle_t *handle, buffer_head *bh);//通知JBD2该缓冲区包含脏元数据
+
+// int journal_stop(handle_t *handle);//结束一个原子操作
+//将该handle与所属的transaction断开联系，如果该原子操作是同步的，则立即将所属的transaction提交。最后将该handle删除。
+void journal_flush(transaction_t *transaction);
+void journal_stop(handle_t *handle) {
+    if(handle->h_sync==1) {
+        //提交所属事务
+        journal_flush(handle->h_transaction);
+        return ;
+    }
+    handle->h_transaction->handles.pop_front();
+    delete_handle(handle);
+}
+
+// int journal_commit(journal_t *journal);//提交当前事务
+
+//将当前事务写入日志
+void journal_flush(transaction_t *transaction) {
+    transaction->t_state = T_FLUSH;//更改正在运行的状态为写入日志状态
+    while(!transaction->addresses.empty()) {
+        transaction->t_journal->log[transaction->addresses.front()] = transaction->datas.front();
+        transaction->addresses.pop_front();
+        transaction->datas.pop_front();
+    }
+    transaction->t_journal->j_running_transaction = NULL;
+    delete_transaction(transaction);
+}
+
 
 
 
