@@ -78,7 +78,7 @@ process = Process()
 # grab the specific path to the binary
 thispath = os.path.dirname(os.path.realpath(__file__))
 binpath = os.path.join(
-    thispath, "../../../", "tests/test-progs/hello/bin/x86/linux/hello"
+    thispath, "WAL/WAL"
 )
 # cmd is a list which begins with the executable (like argv)
 process.cmd = [binpath]

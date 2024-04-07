@@ -1,0 +1,8 @@
+//create a state machine
+
+machine(MachineType:WAL,"wal")
+: Sequencer *sequencer;
+
+{
+
+}

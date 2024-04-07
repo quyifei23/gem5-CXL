@@ -1,0 +1,5 @@
+Import('*')
+
+main.Append(ALL_PROTOCOLS=['WAL'])
+
+main.Append(PROTOCOL_DIRS=['.'])
