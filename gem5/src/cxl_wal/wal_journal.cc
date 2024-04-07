@@ -4,7 +4,7 @@
 namespace gem5
 {
     WALJournal::handle_t::handle_t(transaction_t *transaction,unsigned int sync)
-    : transaction(transaction) {
+    : h_transaction(transaction) {
         h_sync = sync;
     }
 
@@ -18,19 +18,19 @@ namespace gem5
     }
 
     //在当前事务中开始一个新的原子操作
-    handle_t *WALJournal::journal_t::journal_start(unsigned int sync) {
+    WALJournal::handle_t *WALJournal::journal_t::journal_start(unsigned int sync) {
         if(!j_running_transaction) {
             transaction_t transaction(this);
             j_running_transaction = &transaction;
         }
-        handle_t handle(&j_running_transaction,sync);
-        j_running_transaction.handles.push_back(&handle);
+        handle_t handle(j_running_transaction,sync);
+        j_running_transaction->handles.push_back(&handle);
         return &handle;
     }
 
     //在这里我们修改为：通知JBD2即将修改地址为addr中的数据；
     void WALJournal::journal_t::journal_get_write_access(handle_t *handle,PacketPtr pkt) {
-        handle->h_transation->pkts.push_back(pkt);
+        handle->h_transaction->pkts.push_back(pkt);
     }
 
     //立即将所属的transaction提交。
@@ -46,10 +46,10 @@ namespace gem5
     //将该handle与所属的transaction断开联系，如果该原子操作是同步的，则立即将所属的transaction提交。最后将该handle删除。
     void WALJournal::journal_t::journal_stop(handle_t *handle) {
         if(handle->h_sync == 1) {
-            journal_flush(handle->h_transation);
+            journal_flush(handle->h_transaction);
             return ;
         }
-        handle->h_transation->handles.pop_front();
+        handle->h_transaction->handles.pop_front();
     }
 
     WALJournal::WALJournal(const WALJournalParams &params) :

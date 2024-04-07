@@ -50,12 +50,13 @@ namespace gem5 {
         AddrRangeList getAddrRanges() const;
         void sendRangeChange();
 
+        class handle_t;
         class transaction_t;
         class journal_t;
         //add handle
         class handle_t {
             public:
-                transaction_t *h_transation; // 本原子操作属于哪个transaction
+                transaction_t *h_transaction; // 本原子操作属于哪个transaction
                 unsigned int h_sync; // 处理完该原子操作以后，立即将所属的transaction提交
                 handle_t(transaction_t *transaction,unsigned int sync);
         };
