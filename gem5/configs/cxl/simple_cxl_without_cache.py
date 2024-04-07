@@ -70,10 +70,13 @@ system.cpu.interrupts[0].pio = system.membus.mem_side_ports
 system.cpu.interrupts[0].int_requestor = system.membus.cpu_side_ports
 system.cpu.interrupts[0].int_responder = system.membus.mem_side_ports
 
+#create the WAL module
+system.journal = WALJournal()
+system.journal.cpu_side_port = system.membus.mem_side_ports
 
 # create the CXLSwitch
 system.cxlswitch = CXLSwitch()
-system.cxlswitch.cpu_side_port = system.membus.mem_side_ports
+system.cxlswitch.cpu_side_port = system.journal.mem_side_port
 
 # Create a DDR3 memory controller and connect it to the membus
 system.mem_ctrl = MemCtrl()

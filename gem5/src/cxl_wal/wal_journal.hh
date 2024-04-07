@@ -4,6 +4,7 @@
 #include "mem/port.hh"
 #include "params/WALJournal.hh"
 #include "sim/sim_object.hh"
+#include "base/trace.hh"
 #include <list>
 
 namespace gem5 {
@@ -72,10 +73,11 @@ namespace gem5 {
         class transaction_t {
             public:
                 enum state t_state;
+                int capacity;
                 std::list<handle_t *> handles;
                 std::list<PacketPtr> pkts;
                 journal_t *journal;
-                transaction_t(journal_t *journal);
+                transaction_t(journal_t *journal,int capacity);
         };
         //add journal
         class journal_t {

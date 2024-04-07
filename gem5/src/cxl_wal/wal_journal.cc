@@ -8,24 +8,28 @@ namespace gem5
         h_sync = sync;
     }
 
-    WALJournal::transaction_t::transaction_t(journal_t *journal) : journal(journal) {
+    WALJournal::transaction_t::transaction_t(journal_t *journal,int capacity) : journal(journal),capacity(capacity) {
         t_state = T_RUNNING;
     }
 
     WALJournal::journal_t::journal_t() {
-        transaction_t transaction(this);
-        j_running_transaction = &transaction;
+        transaction_t *transaction = new transaction_t(this,5);
+        j_running_transaction = transaction;
     }
 
     //在当前事务中开始一个新的原子操作
     WALJournal::handle_t *WALJournal::journal_t::journal_start(unsigned int sync) {
         if(!j_running_transaction) {
-            transaction_t transaction(this);
-            j_running_transaction = &transaction;
+            transaction_t *transaction = new transaction_t(this,5);
+            j_running_transaction = transaction;
+        } else if (j_running_transaction->capacity == j_running_transaction->handles.size()) {
+            journal_flush(j_running_transaction);
+            transaction_t *transaction = new transaction_t(this,5);
+            j_running_transaction = transaction;
         }
-        handle_t handle(j_running_transaction,sync);
-        j_running_transaction->handles.push_back(&handle);
-        return &handle;
+        handle_t *handle=new handle_t(j_running_transaction,sync);
+        j_running_transaction->handles.push_back(handle);
+        return handle;
     }
 
     //在这里我们修改为：通知JBD2即将修改地址为addr中的数据；
@@ -41,15 +45,22 @@ namespace gem5
             transaction->pkts.pop_front();
         }
         transaction->journal->j_running_transaction = NULL;
+        // DPRINTF(WALJournal, "**********log**********\n");
+        // for(std::list<PacketPtr>::iterator i=logs.begin();i!=logs.end();i++) {
+        //     DPRINTF(WALJournal, "addr : %#x \n",(*i)->getAddr());
+        // }
+        delete(transaction);
     }
 
     //将该handle与所属的transaction断开联系，如果该原子操作是同步的，则立即将所属的transaction提交。最后将该handle删除。
     void WALJournal::journal_t::journal_stop(handle_t *handle) {
         if(handle->h_sync == 1) {
             journal_flush(handle->h_transaction);
+            delete(handle);
             return ;
         }
         handle->h_transaction->handles.pop_front();
+        delete(handle);
     }
 
     WALJournal::WALJournal(const WALJournalParams &params) :
@@ -112,6 +123,18 @@ namespace gem5
         }
         DPRINTF(WALJournal, "Got request for addr %#x\n", pkt->getAddr());
         blocked = true;
+        
+        //add
+        if(pkt->isWrite()) {
+            DPRINTF(WALJournal, "get a write request\n");
+            handle_t *handle = journal.journal_start(0);
+            DPRINTF(WALJournal, "init a new handle\n");
+            journal.journal_get_write_access(handle,pkt);
+            DPRINTF(WALJournal, "merge into current transation\n");
+            journal.journal_stop(handle);
+            DPRINTF(WALJournal, "finish the new handle\n");
+        }
+
         memPort.sendPacket(pkt);
         return true;
     }
