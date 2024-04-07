@@ -214,6 +214,7 @@ void delete_transaction(transaction_t *transaction) {
 //JBD2的操作接口
 
 journal_t *journal_init();//初始化日志系统
+//TODO：需要初始化存储位置，同时修改存储的结构。
 
 journal_t *journal_init() {
     journal_t * journal = new journal_t();
@@ -289,6 +290,39 @@ void journal_flush(transaction_t *transaction) {
     }
     transaction->t_journal->j_running_transaction = NULL;
     delete_transaction(transaction);
+}
+struct node{
+    Addr address;
+    int data;
+};
+
+std::map<Addr,std::list<node *>::iterator> hashmap;
+std::list<node *> addrList;
+
+void data_filter(journal_t *journal,Addr address,int data) {
+    node *n =new node();
+    n->address=address;
+    n->data=data;
+    if(hashmap.find(address)!=hashmap.end()) {
+        std::list<node *>::iterator current = hashmap[address];
+        node * t = (*current)->data;
+        t->data =data;
+        addrList.erase(current);
+        addrList.push_front(t);
+        hashmap[address]=addrList.begin();
+    }
+    else {
+        if(addrList.size()==3) {
+            node *tmp = addrList.back();
+            handle_t *handle = journal_start(journal);
+            journal_get_write_access(handle,tmp->address,tmp->data);
+            journal_stop(handle);
+        }
+        addrList.pop_back();
+        addrList.push_front(n);
+        hashmap[address]=addrList.begin();
+        
+    }
 }
 
 
