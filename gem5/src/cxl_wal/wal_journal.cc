@@ -3,7 +3,7 @@
 
 namespace gem5
 {
-    WALJournal::handle_t::handle_t(transation_t *transaction,unsigned int sync)
+    WALJournal::handle_t::handle_t(transaction_t *transaction,unsigned int sync)
     : transaction(transaction) {
         h_sync = sync;
     }
@@ -13,7 +13,7 @@ namespace gem5
     }
 
     WALJournal::journal_t::journal_t() {
-        transation_t transaction(this);
+        transaction_t transaction(this);
         j_running_transaction = &transaction;
     }
 
@@ -36,8 +36,8 @@ namespace gem5
     //立即将所属的transaction提交。
     void WALJournal::journal_t::journal_flush(transaction_t *transaction) {
         transaction->t_state = T_FLUSH;
-        while(!transaction->pkt.empty()) {
-            transaction->journal->los.push_back(transaction->pkts.front());
+        while(!transaction->pkts.empty()) {
+            transaction->journal->logs.push_back(transaction->pkts.front());
             transaction->pkts.pop_front();
         }
         transaction->journal->j_running_transaction = NULL;
@@ -51,7 +51,7 @@ namespace gem5
         }
         handle->h_transation->handles.pop_front();
     }
-    
+
     WALJournal::WALJournal(const WALJournalParams &params) :
         SimObject(params),
         cpuPort(params.name + ".cpu_side_port", this),

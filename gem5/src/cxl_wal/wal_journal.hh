@@ -14,7 +14,7 @@ namespace gem5 {
                 bool needRetry;
                 PacketPtr blockedPacket;
             public:
-                CPUSidePort(const std::string& name, CXLSwitch *owner) :
+                CPUSidePort(const std::string& name, WALJournal *owner) :
                     ResponsePort(name,owner) ,owner(owner),needRetry(false),blockedPacket(nullptr)
                 { }
 
@@ -33,7 +33,7 @@ namespace gem5 {
                 WALJournal *owner;
                 PacketPtr blockedPacket;
             public:
-                MemSidePort(const std::string& name, CXLSwitch *owner) :
+                MemSidePort(const std::string& name, WALJournal *owner) :
                     RequestPort(name,owner),owner(owner),blockedPacket(nullptr)
                 { }
 
@@ -57,8 +57,8 @@ namespace gem5 {
             public:
                 transaction_t *h_transation; // 本原子操作属于哪个transaction
                 unsigned int h_sync; // 处理完该原子操作以后，立即将所属的transaction提交
-                handle_t(transation_t *transaction,unsigned int sync);
-        }
+                handle_t(transaction_t *transaction,unsigned int sync);
+        };
         //add transaction
         enum state {
             T_RUNNING,
@@ -75,7 +75,7 @@ namespace gem5 {
                 std::list<PacketPtr> pkts;
                 journal_t *journal;
                 transaction_t(journal_t *journal);
-        }
+        };
         //add journal
         class journal_t {
             public:
@@ -87,7 +87,7 @@ namespace gem5 {
                 void journal_flush(transaction_t *transaction);//立即将所属的transaction提交。
                 void journal_stop(handle_t *handle);//将该handle与所属的transaction断开联系，如果该原子操作是同步的，则立即将所属的transaction提交。最后将该handle删除。
                 journal_t();
-        }
+        };
 
         CPUSidePort cpuPort;
 

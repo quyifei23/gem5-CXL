@@ -1,3 +1,4 @@
+Import('*')
 SimObject('WALJournal.py',sim_objects=['WALJournal'])
 Source('wal_journal.cc')
 DebugFlag('WALJournal')
