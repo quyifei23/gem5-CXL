@@ -6,9 +6,11 @@
 #include "sim/sim_object.hh"
 #include "base/trace.hh"
 #include <list>
+#include "base/statistics.hh"
+#include "sim/clocked_object.hh"
 
 namespace gem5 {
-    class WALJournal : public SimObject {
+    class WALJournal : public ClockedObject {
         class CPUSidePort : public ResponsePort {
             private:
                 WALJournal *owner;
@@ -97,6 +99,7 @@ namespace gem5 {
         MemSidePort memPort;
 
         journal_t journal;
+        const Cycles latency;
         bool blocked;
 
         public:

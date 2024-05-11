@@ -51,12 +51,9 @@ system.mem_ranges = [AddrRange("512MB"),AddrRange("512MB","1024MB"),AddrRange("1
 # Create a simple CPU
 system.cpu = X86TimingSimpleCPU()
 
-# Create the simple memory object
-system.memobj = SimpleMemobj()
-
-# Hook the CPU ports up to the cache
-system.cpu.icache_port = system.memobj.inst_port
-system.cpu.dcache_port = system.memobj.data_port
+# Hook the CPU ports up to the membus
+system.cpu.icache_port = system.membus.cpu_side_ports
+system.cpu.dcache_port = system.membus.cpu_side_ports
 
 # Create a memory bus, a coherent crossbar, in this case
 system.membus = SystemXBar()
@@ -112,11 +109,13 @@ process = Process()
 # Set the command
 # grab the specific path to the binary
 thispath = os.path.dirname(os.path.realpath(__file__))
-binpath = os.path.join(
-    thispath, "../../", "tests/test-progs/hello/bin/x86/linux/hello"
-)
+# binpath = os.path.join(
+#     thispath, "../../", "tests/test-progs/hello/bin/x86/linux/hello"
+# )
+binpath = "/home/bill/Desktop/lab/gem5/gem5-CXL/gem5/speccpu2006-v1.0.1/benchspec/CPU2006/429.mcf/exe/mcf_base.x86_64_linux"
+inputs = "/home/bill/Desktop/lab/gem5/gem5-CXL/gem5/speccpu2006-v1.0.1/benchspec/CPU2006/429.mcf/data/test/input/inp.in"
 # cmd is a list which begins with the executable (like argv)
-process.cmd = [binpath]
+process.cmd = [binpath,inputs]
 # Set the cpu to use the process as its workload and create thread contexts
 system.cpu.workload = process
 system.cpu.createThreads()

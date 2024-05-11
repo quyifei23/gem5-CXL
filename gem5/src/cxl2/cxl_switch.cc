@@ -1,13 +1,15 @@
 #include "cxl2/cxl_switch.hh"
 #include "debug/CXLSwitch.hh"
-
+#include "sim/system.hh"
+#include "sim/clocked_object.hh"
 namespace gem5
 {
     CXLSwitch::CXLSwitch(const CXLSwitchParams &params) :
-        SimObject(params),
+        ClockedObject(params),
         cpuPort(params.name + ".cpu_side_port", this),
         memPort(params.name + ".mem_side_port", this),
         switchPort(params.name + ".switch_side_port", this),
+        latency(params.latency),
         blocked(false)
         { }
 
@@ -75,6 +77,10 @@ namespace gem5
         if(blocked) {
             return false;
         }
+        DPRINTF(CXLSwitch,"%d:add latency\n",curTick());
+        //here insert the CXLSwitch latency
+        schedule(new EventFunctionWrapper([this, pkt]{
+        DPRINTF(CXLSwitch,"%d:add latency\n",curTick());
         DPRINTF(CXLSwitch, "Got request for addr %#x\n", pkt->getAddr());
         blocked = true;
         AddrRangeList list_= memPort.getAddrRanges();
@@ -87,6 +93,7 @@ namespace gem5
         }
         switchPort.sendPacket(pkt);
         DPRINTF(CXLSwitch,"sending to switchPort\n");
+        },name() + ".switchEvent", true),clockEdge(latency));
         return true;
     }
 
@@ -109,7 +116,8 @@ namespace gem5
     }
 
     bool CXLSwitch::handleResponse(PacketPtr pkt) {
-        assert(blocked);
+
+
         DPRINTF(CXLSwitch, "Got response for addr %#x\n", pkt->getAddr());
         blocked = false;
         cpuPort.sendPacket(pkt);

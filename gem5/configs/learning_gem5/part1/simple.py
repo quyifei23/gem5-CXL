@@ -54,7 +54,7 @@ system.clk_domain.voltage_domain = VoltageDomain()
 
 # Set up the system
 system.mem_mode = "timing"  # Use timing accesses
-system.mem_ranges = [AddrRange("512MB")]  # Create an address range
+system.mem_ranges = [AddrRange("2048MB")]  # Create an address range
 
 # Create a simple CPU
 # You can use ISA-specific CPU models for different workloads:
@@ -78,11 +78,15 @@ system.cpu.interrupts[0].pio = system.membus.mem_side_ports
 system.cpu.interrupts[0].int_requestor = system.membus.cpu_side_ports
 system.cpu.interrupts[0].int_responder = system.membus.mem_side_ports
 
+#create the WAL module
+system.journal = WALJournal()
+system.journal.cpu_side_port = system.membus.mem_side_ports
+
 # Create a DDR3 memory controller and connect it to the membus
 system.mem_ctrl = MemCtrl()
 system.mem_ctrl.dram = DDR3_1600_8x8()
 system.mem_ctrl.dram.range = system.mem_ranges[0]
-system.mem_ctrl.port = system.membus.mem_side_ports
+system.mem_ctrl.port = system.journal.mem_side_port
 
 # Connect the system up to the membus
 system.system_port = system.membus.cpu_side_ports
@@ -91,19 +95,20 @@ system.system_port = system.membus.cpu_side_ports
 # workloads compiled to those ISAs. Other "hello world" binaries for other ISAs
 # can be found in "tests/test-progs/hello".
 thispath = os.path.dirname(os.path.realpath(__file__))
-binary = os.path.join(
-    thispath,
-    "../../../",
-    "tests/test-progs/hello/bin/x86/linux/hello",
-)
-
-system.workload = SEWorkload.init_compatible(binary)
+# binary = os.path.join(
+#     thispath,
+#     "../../../",
+#     "tests/test-progs/hello/bin/x86/linux/hello",
+# )
+binpath = "/home/bill/Desktop/lab/gem5/gem5-CXL/gem5/speccpu2006-v1.0.1/benchspec/CPU2006/429.mcf/exe/mcf_base.x86_64_linux"
+inputs = "/home/bill/Desktop/lab/gem5/gem5-CXL/gem5/speccpu2006-v1.0.1/benchspec/CPU2006/429.mcf/data/test/input/inp.in"
+system.workload = SEWorkload.init_compatible(binpath)
 
 # Create a process for a simple "Hello World" application
 process = Process()
 # Set the command
 # cmd is a list which begins with the executable (like argv)
-process.cmd = [binary]
+process.cmd = [binpath,inputs]
 # Set the cpu to use the process as its workload and create thread contexts
 system.cpu.workload = process
 system.cpu.createThreads()

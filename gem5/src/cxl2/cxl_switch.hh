@@ -5,7 +5,8 @@
 #include "params/CXLSwitch.hh"
 #include "base/trace.hh"
 #include "sim/sim_object.hh"
-
+#include "base/statistics.hh"
+#include "sim/clocked_object.hh"
 namespace gem5
 {
 
@@ -23,7 +24,7 @@ namespace gem5
     // };
 
 
-    class CXLSwitch : public SimObject {
+    class CXLSwitch : public ClockedObject {
 
         class CPUSidePort : public ResponsePort {
             private:
@@ -75,6 +76,7 @@ namespace gem5
         MemSidePort switchPort;
 
         bool blocked;
+        const Cycles latency;
 
         public:
             CXLSwitch(const CXLSwitchParams &params);

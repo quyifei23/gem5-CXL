@@ -1,6 +1,7 @@
 #include "cxl_wal/wal_journal.hh"
 #include "debug/WALJournal.hh"
-
+#include "debug/journal_t.hh"
+#include<iostream>
 namespace gem5
 {
     WALJournal::handle_t::handle_t(transaction_t *transaction,unsigned int sync)
@@ -45,7 +46,7 @@ namespace gem5
             transaction->pkts.pop_front();
         }
         transaction->journal->j_running_transaction = NULL;
-        // DPRINTF(WALJournal, "**********log**********\n");
+        std::cout<< "**********log**********" << std::endl;
         // for(std::list<PacketPtr>::iterator i=logs.begin();i!=logs.end();i++) {
         //     DPRINTF(WALJournal, "addr : %#x \n",(*i)->getAddr());
         // }
@@ -64,9 +65,10 @@ namespace gem5
     }
 
     WALJournal::WALJournal(const WALJournalParams &params) :
-        SimObject(params),
+        ClockedObject(params),
         cpuPort(params.name + ".cpu_side_port", this),
         memPort(params.name + ".mem_side_port", this),
+        latency(params.latency),
         blocked(false)
         { }
 
@@ -121,6 +123,8 @@ namespace gem5
         if(blocked) {
             return false;
         }
+        //here insert the WAL latency
+        schedule(new EventFunctionWrapper([this, pkt]{
         DPRINTF(WALJournal, "Got request for addr %#x\n", pkt->getAddr());
         blocked = true;
         
@@ -136,6 +140,7 @@ namespace gem5
         }
 
         memPort.sendPacket(pkt);
+        },name() + ".WALEvent", true),clockEdge(latency));
         return true;
     }
 
@@ -158,7 +163,7 @@ namespace gem5
     }
 
     bool WALJournal::handleResponse(PacketPtr pkt) {
-        assert(blocked);
+
         DPRINTF(WALJournal, "Got response for addr %#x\n", pkt->getAddr());
         blocked = false;
         cpuPort.sendPacket(pkt);

@@ -1,6 +1,6 @@
 # import the m5 (gem5) library created when gem5 is built
 import m5
-
+import caches
 # import all of the SimObjects
 from m5.objects import *
 
@@ -78,7 +78,8 @@ process = Process()
 # grab the specific path to the binary
 thispath = os.path.dirname(os.path.realpath(__file__))
 binpath = os.path.join(
-    thispath, "WAL/WAL"
+    thispath, "../../",
+    "tests/test-progs/hello/bin/x86/linux/hello",
 )
 # cmd is a list which begins with the executable (like argv)
 process.cmd = [binpath]
